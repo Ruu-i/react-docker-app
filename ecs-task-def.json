@@ -1,0 +1,21 @@
+{
+  "family": "react-fargate-rask-definition",
+  "containerDefinitions": [
+    {
+      "name": "react-frontend",          
+      "image": "949862582721.dkr.ecr.us-east-1.amazonaws.com/react-ts-portfolio:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::949862582721:role/ecsTaskExecutionRole"
+}

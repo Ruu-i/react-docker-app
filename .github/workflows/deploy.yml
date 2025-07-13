@@ -1,0 +1,52 @@
+name: Deploy to AWS ECS
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+
+env:
+  AWS_REGION: us-east-1                # e.g. us-east-1
+  ECR_REPOSITORY: react-ts-portfolio     # e.g. react-ts-portfolio
+  ECS_CLUSTER: react-ts-portfolio     # e.g. project-react-cluster
+  ECS_SERVICE: react-fargate-rask-definition-service-eqzut0yk     # e.g. project-react-service
+  ECS_TASK_DEFINITION: ecs-task-def.json   # local file you'll create next
+  CONTAINER_NAME: react-frontend # e.g. react-container
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push Docker image to ECR
+      run: |
+        IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        docker build -t $IMAGE_URI .
+        docker push $IMAGE_URI
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+    - name: Fill in new image URI in task definition
+      run: |
+        sed "s|<IMAGE_URI>|$IMAGE_URI|g" task-def-template.json > ${{ env.ECS_TASK_DEFINITION }}
+
+    - name: Deploy to ECS Fargate
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ env.ECS_TASK_DEFINITION }}
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
